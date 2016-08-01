@@ -4,6 +4,7 @@ Final year project on simulating clouds.
 Currently not working due to issues including the freeglut library.
 Most of the calculating performed in fyp\Builder.cpp (setting light colour, colouring the cloud from line 338)
 
+
 INPUT
 
 The input text file (input.txt) takes in the following parameters:
