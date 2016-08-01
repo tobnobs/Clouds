@@ -189,6 +189,7 @@ void Builder::drawCloud() {
 	glEnd();
 }
 
+//Setting the colour of the light according to the time of day
 Vector3 Builder::calcLightColour(float time) {
 	float red, green, blue;
 	if (time < 7.0) {
@@ -234,7 +235,7 @@ Vector3 Builder::getLightColour() {
 	return this->lightColour;
 }
 
-// Detailed Billboards
+// Multiple colour billboards
 void Builder::lightMetas() {
 	// For every blob
 	for (int i = 0; i < numBlobs; i++) {
@@ -285,6 +286,7 @@ void Builder::lightMetas() {
 		}
 	}
 }
+// Multiple colour billboards
 void Builder::lightMetasSky() {
 	//For every blob
 	for (int i = 0; i < numBlobs; i++) {
@@ -333,6 +335,7 @@ void Builder::lightMetasSky() {
 	}
 }
 
+//Single colour billboards
 void Builder::lightMetaSimple() {
 	// For every blob
 	for (int i = 0; i < numBlobs; i++) {
@@ -371,6 +374,7 @@ void Builder::lightMetaSimple() {
 		blobs[i].setColour(pointColour.x, pointColour.y, pointColour.z);
 	}
 }
+//Single colour billboards
 void Builder::lightMetasSkySimple() {
 	//For every blob
 	for (int i = 0; i < numBlobs; i++) {
