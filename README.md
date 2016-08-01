@@ -1,7 +1,7 @@
 # Clouds
 Final year project on simulating clouds.
 
-Currently not working due to issues including the freeglut library.
+Currently having issues including the necessary additional libraries.
 Most of the calculating performed in fyp\Builder.cpp (setting light colour, colouring the cloud from line 338)
 
 
