@@ -2,7 +2,7 @@
 Final year project on simulating clouds.
 
 Currently having issues including the necessary additional libraries.
-Most of the calculating performed in fyp\Builder.cpp (setting light colour, colouring the cloud from line 338)
+Most of the calculations/shading performed in fyp\Builder.cpp (setting light colour, colouring the cloud from line 338)
 
 
 INPUT
