@@ -1,0 +1,356 @@
+#include "Builder.h"
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+using namespace std;
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+/* Macro for sin & cos in degrees
+#define Cos(th) cos(PI/180*(lr))
+#define Sin(th) sin(PI/180*(lr))*/
+
+// DOME PROPERTIES
+// Intervals between verticies.
+int dtheta = 10;
+int dphi = 10;
+float radius = 2.0;
+// The number of verticies which will fit on a sphere with dtheta and dphi
+int numDomePoints = (int)((360 / dtheta)*(360 / dphi) * 4);
+bool domeGen = false;
+bool metabGen = false;
+
+// CLOUD PROPERTIES
+// The number of particles in the cloud
+int NumParticles = 0;
+bool cloudGen = false;
+// metaballs
+bool bbgen = false;
+int numBlobs = 1;
+float tStep = (PI) / (float)12;
+float sStep = (PI) / (float)12;
+int numBlobPoints = ((PI + 0.0001) / tStep +1)*((2*PI + 0.0001) / sStep +1) * 2;
+int totalBlobPoints = numBlobPoints * numBlobs;
+int numBBpoints = 2 * PI / (PI / 6) + 2;
+int totalBBpoints = numBBpoints * numBlobs;
+
+// TOTAL VERTICES
+Vector4* DomePoints = new Vector4[numDomePoints];
+Vector4* CloudPoints = new Vector4[NumParticles];
+Vector4* BlobPoints = new Vector4[totalBlobPoints];
+Vector3* bbPoints = new Vector3[numBBpoints];
+
+
+
+
+Builder::Builder() {
+	//cout << numBlobPoints << endl;
+}
+
+
+void Builder::generateDome() {
+	int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+
+				// Fill vertices
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			DomePoints[n].x = radius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			DomePoints[n].y = radius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			DomePoints[n].z = radius * cosf(phi*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			DomePoints[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			DomePoints[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			DomePoints[n].z = radius * cosf((phi + dphi)*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			DomePoints[n].x = radius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			DomePoints[n].y = radius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			DomePoints[n].z = radius * cosf(DTOR*phi);
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				DomePoints[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				DomePoints[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				DomePoints[n].z = radius * cosf((phi + dphi)*DTOR);
+
+				n++;
+			}
+			if (n > numDomePoints) {
+				cout << "Error: too many dome points \n";
+			}
+		}
+	}
+	domeGen = true;
+}
+
+void Builder::drawDome() {
+	if (!domeGen) generateDome();
+
+	// Outer Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		glColor3f(1.0, 1.0, 1.0);
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z + 0.01);
+	}
+	glEnd();
+
+	// Inner Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		// Colour depending on angle from horizon
+		if (DomePoints[i].z < 0.10) glColor3f(0.6, 0.6, 0.8);
+		else if (DomePoints[i].z < 0.2) glColor3f(0.5, 0.5, 0.78);
+		else if (DomePoints[i].z < 0.4) glColor3f(0.3, 0.3, 0.76);
+		else if (DomePoints[i].z < 0.7) glColor3f(0.2, 0.2, 0.74);
+		else glColor3f(0.15, 0.15, 0.72);
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z);
+	}
+	glEnd();
+}
+
+
+void Builder::generateCloud() {
+	srand(time(NULL));
+
+	float phimax = PI;
+	float phimin = -PI;
+	float thetamax = PI;
+	float thetamin = -PI;
+
+	for (int i = 0; i < (NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (NumParticles / 3); i < (2 * NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.4 + cos(phi) * sin(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.33 + sin(phi) * 0.7 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (2 * NumParticles / 3); i < NumParticles; i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.2 + cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	cloudGen = true;
+}
+
+void Builder::drawCloud() {
+	if (!cloudGen) generateCloud();
+
+	glColor3f(1, 1, 1);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < NumParticles; i++) {
+		glVertex3f(CloudPoints[i].x, CloudPoints[i].y, CloudPoints[i].z);
+	}
+	glEnd();
+}
+
+
+void Builder::drawLegacy() {
+	drawCloud();
+	drawDome();
+}
+
+
+void Builder::generateEllipse(Vector3 centre, float radX, float radY, float radZ) {
+	int i = 0;
+	for (float t = -PI / 2; t <= (PI / 2) + .0001; t += tStep)
+	{
+		for (float s = -PI; s <= PI + .0001; s += sStep) {
+			BlobPoints[i].x = radX * cos(t) * cos(s);
+			BlobPoints[i].y = radY * cos(t) * sin(s);
+			BlobPoints[i].z = radZ * sin(t);
+			i++;
+			BlobPoints[i].x = radX * cos(t + tStep) * cos(s);
+			BlobPoints[i].y = radY * cos(t + tStep) * sin(s);
+			BlobPoints[i].z = radZ * sin(t + tStep);
+			i++;
+		}	
+	}
+	//cout << totalBlobPoints << endl;
+	//cout << "i = " << i << endl;
+	metabGen = true;
+}
+
+void Builder::drawEllipse(Vector3 centre, float radX, float radY, float radZ) {
+	if (!metabGen) generateEllipse(centre, radX, radY, radZ);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < totalBlobPoints; i++) {
+		glColor3f(1.0, 0, 0);
+		glVertex3f(BlobPoints[i].x, BlobPoints[i].y, BlobPoints[i].z);
+	}
+	glEnd();
+}
+
+void Builder::generateBillboard(Vector3 centre, float radMax, Vector3 lightSource) {
+	Vector3 A = { 0, 0, 1 };
+	Vector3 B = (centre - lightSource).normalize();
+
+	Vector3 u = ((A.dot(B))*A) / (((A.dot(B))*A).length());
+	Vector3 v = (B - (A.dot(B)) * A) / (B - (A.dot(B)) * A).length();
+	Vector3 w = B.cross(A);
+
+	//////////////////////////////////////////////////////////////
+	float dot = A.dot(B);
+	float crossab = A.cross(B).length();
+	Vector3 unit = (B - (A.dot(B))*A) / (B - (A.dot(B))*A).length();
+	Vector3 crossba = B.cross(A);
+
+	Matrix3 gg = { dot, crossab, 0, -crossab, dot, 0, 0, 0, 1 };
+	Matrix3 ffi = { A.x, A.y, A.z, unit.x, unit.y, unit.z, crossba.x, crossba.y, crossba.z };
+
+	Matrix3 ffiinv = inverse(ffi);
+	Matrix3 rot = ffi * gg * ffiinv;
+
+
+
+	//Matrix3 rot = gg(A, B);
+	cout << "Should be zero - " << B - rot * A << endl;
+
+	Matrix3 test = { 1,2,3,4,5,6,7,8,9 };
+	cout << test << endl;
+
+	int n = 0;
+	bbPoints[n].x = centre.x;
+	bbPoints[n].y = centre.y;
+	bbPoints[n].z = centre.z;
+	n++;
+	for (float i = 2 * PI; i >= 0; i -= PI / 6) {
+		bbPoints[n].x = cos(i) * radMax;
+		bbPoints[n].y = sin(i) * radMax;
+		bbPoints[n].z = 0 * radMax;
+		if (n == 1) cout << "bbpoint[n]    = " << bbPoints[n] << endl;
+		bbPoints[n] = rot * bbPoints[n];
+		if (n == 1) cout << "bbpoint[n]new = " << bbPoints[n] << endl;
+		n++;
+	}
+	bbgen = true;
+}
+
+Matrix3 Builder::gg(Vector3 a, Vector3 b) {
+	float dot = a.dot(b);
+	float cro = a.cross(b).length();
+	Matrix3 gg = { dot, cro, 0, -cro, dot, 0, 0, 0, 1 };
+	return gg;
+}
+
+Matrix3 Builder::FFi(Vector3 a, Vector3 b) {
+	Vector3 unit = (b - (a.dot(b))*a) / (b - (a.dot(b))*a).length();
+	Vector3 cros = b.cross(a);
+	Matrix3 ffi = { a.x, a.y, a.z, unit.x, unit.y, unit.z, cros.x, cros.y, cros.z };
+	return ffi;
+}
+
+Matrix3 Builder::UU(Vector3 a, Vector3 b) {
+	Matrix3 g = gg(a, b);
+	Matrix3 fi = FFi(a, b);
+	Matrix3 fii = fi.invert();
+	Matrix3 u = fi * g * fii;
+	return u;
+}
+
+Matrix3 Builder::inverse(Matrix3 m) {
+	float determinant, invDeterminant;
+	float tmp[9];
+
+	tmp[0] = m[4] * m[8] - m[5] * m[7];
+	tmp[1] = m[2] * m[7] - m[1] * m[8];
+	tmp[2] = m[1] * m[5] - m[2] * m[4];
+	tmp[3] = m[5] * m[6] - m[3] * m[8];
+	tmp[4] = m[0] * m[8] - m[2] * m[6];
+	tmp[5] = m[2] * m[3] - m[0] * m[5];
+	tmp[6] = m[3] * m[7] - m[4] * m[6];
+	tmp[7] = m[1] * m[6] - m[0] * m[7];
+	tmp[8] = m[0] * m[4] - m[1] * m[3];
+
+	// check determinant if it is 0
+	determinant = m[0] * tmp[0] + m[1] * tmp[3] + m[2] * tmp[6];
+	float EPSILON = 0.00001f;
+	if (fabs(determinant) <= EPSILON) {
+		Matrix3 id = { 1,0,0,0,1,0,0,0,1 };
+		return id; // cannot inverse, make it idenety matrix
+	}
+
+	// divide by the determinant
+	invDeterminant = 1.0f / determinant;
+	m[0] = invDeterminant * tmp[0];
+	m[1] = invDeterminant * tmp[1];
+	m[2] = invDeterminant * tmp[2];
+	m[3] = invDeterminant * tmp[3];
+	m[4] = invDeterminant * tmp[4];
+	m[5] = invDeterminant * tmp[5];
+	m[6] = invDeterminant * tmp[6];
+	m[7] = invDeterminant * tmp[7];
+	m[8] = invDeterminant * tmp[8];
+
+	return m;
+}
+
+void Builder::drawBillBoard(Vector3 centre, float radMax, Vector3 lightSource) {
+	if (!bbgen) generateBillboard(centre, radMax, lightSource);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glBegin(GL_TRIANGLE_FAN);
+	glColor3f(1.0, 1.0, 1.0);
+	for (int i = 0; i < numBBpoints; i++) {
+		glVertex3f(bbPoints[i].x, bbPoints[i].y, bbPoints[i].z);
+	}
+	glEnd();
+}
+
+
+void Builder::drawMetas(Vector3 centre, float radX, float radY, float radZ, Vector3 lightSource) {
+	drawEllipse(centre, radX, radY, radZ);
+	float radMax = fmax(fmax(radX, radY), radZ);
+	drawBillBoard(centre, radMax, lightSource);
+
+	bool sundrawn = false;
+	if (!sundrawn) {
+		int i = 0;
+		glColor3f(1.0, 1.0, 0.3);
+		glBegin(GL_TRIANGLE_STRIP);
+		for (float t = -PI / 2; t <= (PI / 2) + .0001; t += tStep)
+		{
+			for (float s = -PI; s <= PI + .0001; s += sStep) {
+				glVertex3f(0.1 * cos(t) * cos(s) + lightSource.x, 0.1 * cos(t) * sin(s) + lightSource.y, 0.1 * sin(t) + lightSource.z);
+				i++;
+				glVertex3f(0.1 * cos(t + tStep) * cos(s) + lightSource.x, 0.1 * cos(t + tStep) * sin(s) + lightSource.y, 0.1 * sin(t + tStep) + lightSource.z);
+				i++;
+			}
+		}
+		glEnd();
+		sundrawn = true;
+	}
+}

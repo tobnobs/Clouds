@@ -1,0 +1,57 @@
+/*#include "Painter.h"
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+Vector4* Vertices;
+int numVertices;
+
+Painter::Painter(Vector4* VerticesIn, int numVerticesIn) 
+{
+	this->Vertices = VerticesIn;
+	this->numVertices = numVerticesIn;
+}
+
+void Painter::drawDome() {
+	//if (!domeGen) generateDome();
+
+	// Outer Dome
+	int n = 0;
+	glBegin(GL_TRIANGLE_STRIP);
+	while (Vertices[n].w == 1) {
+		glColor3f(1.0, 1.0, 1.0);
+		glVertex3f(Vertices[n].x, Vertices[n].y, Vertices[n].z + 0.01);
+		n++;
+	}
+	glEnd();
+
+	// Inner Dome
+	n = 0;
+	glBegin(GL_TRIANGLE_STRIP);
+	while (Vertices[n].w == 0) {
+		// Colour depending on angle from horizon
+		if (Vertices[n].z < 0.10) glColor3f(0.6, 0.6, 0.8);
+		else if (Vertices[n].z < 0.2) glColor3f(0.5, 0.5, 0.78);
+		else if (Vertices[n].z < 0.4) glColor3f(0.3, 0.3, 0.76);
+		else if (Vertices[n].z < 0.7) glColor3f(0.2, 0.2, 0.74);
+		else glColor3f(0.15, 0.15, 0.72);
+		glVertex3f(Vertices[n].x, Vertices[n].y, Vertices[n].z);
+	}
+	glEnd();
+}
+
+void Painter::drawCloud() {
+	glColor3f(1, 1, 1);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < numVertices; i++) {
+		if (Vertices[i].w == 0) glVertex3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
+	}
+	glEnd();
+}
+
+Painter::~Painter()
+{
+}
+*/

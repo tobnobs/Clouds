@@ -1,0 +1,146 @@
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include <iostream>
+#include <cmath>
+#include <math.h>
+
+#define PI 3.1415926535897f
+#define DTOR (PI / 180.0f) //DegreesToRadians
+
+typedef struct {
+	float x, y, z;
+	DWORD color;
+	float u, v;
+} VERTEX;
+
+void render(void);
+
+void keyboard(char c, int x, int y);
+
+int main(int argc, char** argv) {
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowPosition(100, 50);//optional
+	glutInitWindowSize(800, 600); //optional
+	glutCreateWindow("Royal Pavilion");
+
+	glutDisplayFunc(render);
+
+	glutMainLoop();
+}
+
+void render(void) {
+
+	VERTEX *Vertices;
+	int theta, phi;
+	float radius = 100;
+
+	// Intervals between verticies.
+	int dtheta = 15;
+	int dphi = 15;
+	// The number of verticies which will fit on a sphere with dtheta and dphi
+	int NumVertices = (int)((360 / dtheta)*(90 / dphi) * 4);
+	// The list of vertices
+	Vertices = new VERTEX[NumVertices];
+
+
+	int n = 0;	// Iterator through the list of verticies.
+	float vx, vy, vz, mag;
+	float hTile = 1;
+	float vTile = 1;
+
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			Vertices[n].x = radius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			Vertices[n].y = radius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			Vertices[n].z = radius * cosf(phi*DTOR);
+			// Find the vector from the origin to this point
+			vx = Vertices[n].x;
+			vy = Vertices[n].y;
+			vz = Vertices[n].z;
+			// Normalise the vector
+			mag = (float)sqrt((vx)*(vx)+(vy)*(vy)+(vz)*(vz));
+			vx /= mag;
+			vy /= mag;
+			vz /= mag;
+			// Calculate the spherical texture coordinates.
+			Vertices[n].u = hTile * (float)(atan2(vx, vz) / (PI * 2)) + 0.5f;
+			Vertices[n].v = vTile * (float)(asin(vy) / PI) + 0.5f;
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+			// Find the vector from the origin to this point
+			vx = Vertices[n].x;
+			vy = Vertices[n].y;
+			vz = Vertices[n].z;
+			// Normalise the vector
+			mag = (float)sqrt((vx)*(vx)+(vy)*(vy)+(vz)*(vz));
+			vx /= mag;
+			vy /= mag;
+			vz /= mag;
+			// Calculate the spherical texture coordinates.
+			Vertices[n].u = hTile * (float)(atan2(vx, vz) / (PI * 2)) + 0.5f;
+			Vertices[n].v = vTile * (float)(asin(vy) / PI) + 0.5f;
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			Vertices[n].x = radius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			Vertices[n].y = radius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			Vertices[n].z = radius * cosf(DTOR*phi);
+			// Find the vector from the origin to this point
+			vx = Vertices[n].x;
+			vy = Vertices[n].y;
+			vz = Vertices[n].z;
+			// Normalise the vector
+			mag = (float)sqrt((vx)*(vx)+(vy)*(vy)+(vz)*(vz));
+			vx /= mag;
+			vy /= mag;
+			vz /= mag;
+			// Calculate the spherical texture coordinates.
+			Vertices[n].u = hTile * (float)(atan2(vx, vz) / (PI * 2)) + 0.5f;
+			Vertices[n].v = vTile * (float)(asin(vy) / PI) + 0.5f;
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+				// Find the vector from the origin to this point
+				vx = Vertices[n].x;
+				vy = Vertices[n].y;
+				vz = Vertices[n].z;
+				// Normalise the vector
+				mag = (float)sqrt((vx)*(vx)+(vy)*(vy)+(vz)*(vz));
+				vx /= mag;
+				vy /= mag;
+				vz /= mag;
+				// Calculate the spherical texture coordinates.
+				Vertices[n].u = hTile * (float)(atan2(vx, vz) / (PI * 2)) + 0.5f;
+				Vertices[n].v = vTile * (float)(asin(vy) / PI) + 0.5f;
+				n++;
+			}
+		}
+	}
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < NumVertices; i++)
+	{
+		//glColor3f(1.0f, 1.0f, 1.0f);
+		//glTexCoord2f(Vertices[i].u, Vertices[i].v);
+		glColor3f(0, 0, 1);
+		glVertex3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
+	}
+	glEnd();
+
+	std::cout << "Hi";
+
+	glutSwapBuffers();
+}
+

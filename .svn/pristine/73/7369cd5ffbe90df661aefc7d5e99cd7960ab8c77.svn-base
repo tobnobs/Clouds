@@ -1,0 +1,14 @@
+#pragma once
+class Radiometry
+{
+public:
+	Radiometry();
+	~Radiometry();
+private:
+	float phaseFunction(float, float);
+	void calcTransmittance(float, float, float, float);
+		// thickness, density, scattering efficiency, radius
+	void lightTrans(float, float, float);
+		// luminosity, transmittance, ks
+};
+

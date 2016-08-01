@@ -1,0 +1,18 @@
+/*#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Generator {
+public:
+	Generator(int);
+	void genDome(int);
+	void ellipseRandC(float, float, float, int, int, Vector3);
+	Vector4* getVertices();
+	~Generator();
+private:
+	Vector4* Vertices;
+	bool generated;
+};*/

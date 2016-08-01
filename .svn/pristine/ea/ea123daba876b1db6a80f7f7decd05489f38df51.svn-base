@@ -1,0 +1,178 @@
+#include "Blob.h"
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Vectors.h"
+#include "Dependencies\matrix\src\Matrices.h"
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+
+bool bgenerated = false;
+bool egenerated = false;
+
+int numBBpoints = 2 * PI / (PI / 6) + 2;
+Vector3* bbPoints = new Vector3[numBBpoints];
+
+float astep = (PI) / (float)12;
+float bstep = (PI) / (float)12;
+int numBlobPoints = ((PI + 0.0001) / astep + 1)*((2 * PI + 0.0001) / bstep + 1) * 2;
+Vector3* elipPoints = new Vector3[numBlobPoints];
+
+using namespace std;
+
+Blob::Blob() {
+	this->centre = { 0.0, 0.0, 0.0 };
+	this->radius = 0.5;
+	this->radx = 0.5;
+	this->rady = 0.5;
+	this->radz = 0.5;
+	this->r = 1.0;
+	this->g = 1.0;
+	this->b = 1.0;
+	this->lightSource = { 0.0, 0.0, 0.0 };
+}
+
+Blob::Blob(Vector3 centreN, float radx, float rady, float radz, float rN, float gN, float bN, Vector3 lightSourceN) {
+	this->centre = centreN;
+	this->radius = fmax(radx, fmax(rady, radz));
+	this->radx = radx;
+	this->rady = rady;
+	this->radz = radz;
+	this->r = rN;
+	this->g = gN;
+	this->b = bN;
+	this->lightSource = lightSourceN;
+}
+
+void Blob::draw() {
+		if (!bgenerated) genBillboard();
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glBegin(GL_TRIANGLE_FAN);
+		glColor3f(1.0, 1.0, 1.0);
+		for (int i = 0; i < numBBpoints; i++) {
+			glVertex3f(bbPoints[i].x, bbPoints[i].y, bbPoints[i].z);
+		}
+		glEnd();	
+
+		if (!egenerated) generateEllipse();
+
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glBegin(GL_TRIANGLE_STRIP);
+		for (int i = 0; i < numBlobPoints; i++) {
+			glColor3f(1.0, 0, 0);
+			glVertex3f(elipPoints[i].x, elipPoints[i].y, elipPoints[i].z);
+		}
+		glEnd();
+}
+
+void Blob::genBillboard() {
+	Vector3 A = { 0, 0, 1 };
+	Vector3 B = (centre - lightSource).normalize();
+	Matrix3 rot = calcRotMatrix(A, B);
+	cout << "Should be zero - " << B - rot * A << endl;
+
+	int n = 0;
+	bbPoints[n].x = centre.x;
+	bbPoints[n].y = centre.y;
+	bbPoints[n].z = centre.z;
+	n++;
+	for (float i = 2 * PI; i >= 0; i -= PI / 6) {
+		bbPoints[n].x = cos(i) * radius;
+		bbPoints[n].y = sin(i) * radius;
+		bbPoints[n].z = 0 * radius;
+		if (n == 1) cout << "bbpoint[n]    = " << bbPoints[n] << endl;
+		bbPoints[n] = rot * bbPoints[n];
+		if (n == 1) cout << "bbpoint[n]new = " << bbPoints[n] << endl;
+		n++;
+	}
+	bgenerated = true;
+}
+
+Matrix3 Blob::calcRotMatrix(Vector3 a, Vector3 b) {
+	float dot = a.dot(b);
+	float crossab = a.cross(b).length();
+	Vector3 unit = (b - (a.dot(b))*a) / (b - (a.dot(b))*a).length();
+	Vector3 crossba = b.cross(a);
+
+	Matrix3 gg = { dot, crossab, 0, -crossab, dot, 0, 0, 0, 1 };
+	Matrix3 ffi = { a.x, a.y, a.z, unit.x, unit.y, unit.z, crossba.x, crossba.y, crossba.z };
+
+	Matrix3 ffiinv = inverse(ffi);
+	Matrix3 rot = ffi * gg * ffiinv;
+	return rot;
+}
+
+Matrix3 Blob::inverse(Matrix3 m) {
+	float determinant, invDeterminant;
+	float tmp[9];
+
+	tmp[0] = m[4] * m[8] - m[5] * m[7];
+	tmp[1] = m[2] * m[7] - m[1] * m[8];
+	tmp[2] = m[1] * m[5] - m[2] * m[4];
+	tmp[3] = m[5] * m[6] - m[3] * m[8];
+	tmp[4] = m[0] * m[8] - m[2] * m[6];
+	tmp[5] = m[2] * m[3] - m[0] * m[5];
+	tmp[6] = m[3] * m[7] - m[4] * m[6];
+	tmp[7] = m[1] * m[6] - m[0] * m[7];
+	tmp[8] = m[0] * m[4] - m[1] * m[3];
+
+	// check determinant if it is 0
+	determinant = m[0] * tmp[0] + m[1] * tmp[3] + m[2] * tmp[6];
+	float EPSILON = 0.00001f;
+	if (fabs(determinant) <= EPSILON) {
+		Matrix3 id = { 1,0,0,0,1,0,0,0,1 };
+		return id; // cannot inverse, make it idenety matrix
+	}
+
+	// divide by the determinant
+	invDeterminant = 1.0f / determinant;
+	m[0] = invDeterminant * tmp[0];
+	m[1] = invDeterminant * tmp[1];
+	m[2] = invDeterminant * tmp[2];
+	m[3] = invDeterminant * tmp[3];
+	m[4] = invDeterminant * tmp[4];
+	m[5] = invDeterminant * tmp[5];
+	m[6] = invDeterminant * tmp[6];
+	m[7] = invDeterminant * tmp[7];
+	m[8] = invDeterminant * tmp[8];
+
+	return m;
+}
+
+void Blob::generateEllipse() {
+	int i = 0;
+	for (float t = -PI / 2; t <= (PI / 2) + .0001; t += astep)
+	{
+		for (float s = -PI; s <= PI + .0001; s += bstep) {
+			elipPoints[i].x = radx * cos(t) * cos(s);
+			elipPoints[i].y = rady * cos(t) * sin(s);
+			elipPoints[i].z = radz * sin(t);
+			i++;
+			elipPoints[i].x = radx * cos(t + astep) * cos(s);
+			elipPoints[i].y = rady * cos(t + astep) * sin(s);
+			elipPoints[i].z = radz * sin(t + astep);
+			i++;
+		}
+	}
+	//cout << totalBlobPoints << endl;
+	//cout << "i = " << i << endl;
+	egenerated = true;
+}
+
+Vector3 Blob::getColour() {
+	return Vector3(r, g, b);
+}
+
+void Blob::setColour(Vector3 newRgb) {
+	this->r = newRgb.x; 
+	this->g = newRgb.y;
+	this->b = newRgb.z;
+}
+
+Vector3 Blob::getCentre() {
+	return centre;
+}
+
+Blob::~Blob()
+{
+}

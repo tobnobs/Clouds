@@ -1,0 +1,233 @@
+#include "Builder.h"
+#include "Blob.h"
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+using namespace std;
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+
+// DOME PROPERTIES
+// Intervals between verticies.
+int dtheta = 10;
+int dphi = 10;
+float domeRadius = 2.0;
+// The number of verticies which will fit on a sphere with dtheta and dphi
+int numDomePoints = (int)((360 / dtheta)*(360 / dphi) * 4);
+bool domeGen = false;
+bool metabGen = false;
+
+// CLOUD PROPERTIES
+// The number of particles in the cloud
+int NumParticles = 0;
+bool cloudGen = false;
+// metaballs
+bool bbgen = false;
+int numBlobs = 1;
+float tStep = (PI) / (float)12;
+float sStep = (PI) / (float)12;
+int numBlobPoints = ((PI + 0.0001) / tStep +1)*((2*PI + 0.0001) / sStep +1) * 2;
+int totalBlobPoints = numBlobPoints * numBlobs;
+
+// TOTAL VERTICES
+Vector4* DomePoints = new Vector4[numDomePoints];
+Vector4* CloudPoints = new Vector4[NumParticles];
+Vector4* BlobPoints = new Vector4[totalBlobPoints];
+
+
+Builder::Builder() {
+	//cout << numBlobPoints << endl;
+}
+
+
+void Builder::generateDome() {
+	int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+
+				// Fill vertices
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			DomePoints[n].x = domeRadius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			DomePoints[n].y = domeRadius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			DomePoints[n].z = domeRadius * cosf(phi*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			DomePoints[n].x = domeRadius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			DomePoints[n].y = domeRadius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			DomePoints[n].z = domeRadius * cosf((phi + dphi)*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			DomePoints[n].x = domeRadius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			DomePoints[n].y = domeRadius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			DomePoints[n].z = domeRadius * cosf(DTOR*phi);
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				DomePoints[n].x = domeRadius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				DomePoints[n].y = domeRadius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				DomePoints[n].z = domeRadius * cosf((phi + dphi)*DTOR);
+
+				n++;
+			}
+			if (n > numDomePoints) {
+				cout << "Error: too many dome points \n";
+			}
+		}
+	}
+	domeGen = true;
+}
+
+void Builder::drawDome() {
+	if (!domeGen) generateDome();
+
+	// Outer Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		glColor3f(1.0, 1.0, 1.0);
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z + 0.01);
+	}
+	glEnd();
+
+	// Inner Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		// Colour depending on angle from horizon
+		if (DomePoints[i].z < 0.10) glColor3f(0.6, 0.6, 0.8);
+		else if (DomePoints[i].z < 0.2) glColor3f(0.5, 0.5, 0.78);
+		else if (DomePoints[i].z < 0.4) glColor3f(0.3, 0.3, 0.76);
+		else if (DomePoints[i].z < 0.7) glColor3f(0.2, 0.2, 0.74);
+		else glColor3f(0.15, 0.15, 0.72);
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z);
+	}
+	glEnd();
+}
+
+
+void Builder::generateCloud() {
+	srand(time(NULL));
+
+	float phimax = PI;
+	float phimin = -PI;
+	float thetamax = PI;
+	float thetamin = -PI;
+
+	for (int i = 0; i < (NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (NumParticles / 3); i < (2 * NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.4 + cos(phi) * sin(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.33 + sin(phi) * 0.7 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (2 * NumParticles / 3); i < NumParticles; i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.2 + cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	cloudGen = true;
+}
+
+void Builder::drawCloud() {
+	if (!cloudGen) generateCloud();
+
+	glColor3f(1, 1, 1);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < NumParticles; i++) {
+		glVertex3f(CloudPoints[i].x, CloudPoints[i].y, CloudPoints[i].z);
+	}
+	glEnd();
+}
+
+
+void Builder::drawLegacy() {
+	drawCloud();
+	drawDome();
+}
+
+
+void Builder::generateEllipse(Vector3 centre, float radX, float radY, float radZ) {
+	int i = 0;
+	for (float t = -PI / 2; t <= (PI / 2) + .0001; t += tStep)
+	{
+		for (float s = -PI; s <= PI + .0001; s += sStep) {
+			BlobPoints[i].x = radX * cos(t) * cos(s);
+			BlobPoints[i].y = radY * cos(t) * sin(s);
+			BlobPoints[i].z = radZ * sin(t);
+			i++;
+			BlobPoints[i].x = radX * cos(t + tStep) * cos(s);
+			BlobPoints[i].y = radY * cos(t + tStep) * sin(s);
+			BlobPoints[i].z = radZ * sin(t + tStep);
+			i++;
+		}	
+	}
+	//cout << totalBlobPoints << endl;
+	//cout << "i = " << i << endl;
+	metabGen = true;
+}
+
+void Builder::drawEllipse(Vector3 centre, float radX, float radY, float radZ) {
+	if (!metabGen) generateEllipse(centre, radX, radY, radZ);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < totalBlobPoints; i++) {
+		glColor3f(1.0, 0, 0);
+		glVertex3f(BlobPoints[i].x, BlobPoints[i].y, BlobPoints[i].z);
+	}
+	glEnd();
+}
+
+void Builder::drawMetas(Vector3 centre, float radX, float radY, float radZ, Vector3 lightSource) {
+	drawEllipse(centre, radX, radY, radZ);
+
+	Blob bb = Blob(centre, radX, radY, radZ, 1.0f, 1.0f, 1.0f, lightSource);
+	bb.draw();
+
+	bool sundrawn = false;
+	if (!sundrawn) {
+		int i = 0;
+		glColor3f(1.0, 1.0, 0.3);
+		glBegin(GL_TRIANGLE_STRIP);
+		for (float t = -PI / 2; t <= (PI / 2) + .0001; t += tStep)
+		{
+			for (float s = -PI; s <= PI + .0001; s += sStep) {
+				glVertex3f(0.1 * cos(t) * cos(s) + lightSource.x, 0.1 * cos(t) * sin(s) + lightSource.y, 0.1 * sin(t) + lightSource.z);
+				i++;
+				glVertex3f(0.1 * cos(t + tStep) * cos(s) + lightSource.x, 0.1 * cos(t + tStep) * sin(s) + lightSource.y, 0.1 * sin(t + tStep) + lightSource.z);
+				i++;
+			}
+		}
+		glEnd();
+		sundrawn = true;
+	}
+}

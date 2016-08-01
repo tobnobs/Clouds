@@ -1,0 +1,118 @@
+/*#include "Generator.h"
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+// Macro for sin & cos in degrees
+#define Cos(th) cos(PI/180*(lr))
+#define Sin(th) sin(PI/180*(lr))
+
+// DOME PROPERTIES
+float radius = 2.0;
+
+// TOTAL VERTICES
+bool fullVertices = false;
+int totalVertices;
+int cloudStart = 0;
+Vector4* Vertices;
+
+Generator::Generator(int totalVertices) {
+	this->Vertices = new Vector4[totalVertices];
+}
+
+void Generator::genDome(int end) {
+	if (totalVertices <= end) {
+		end = totalVertices;
+		std::cout << "Vertices filled by dome.\n";
+		fullVertices = true;
+	}
+
+	int dtheta = (int)(sqrt(129600 / end));
+	int dphi = dtheta;
+
+	cloudStart = end;
+
+	int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+
+	// Fill vertices
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			Vertices[n].x = radius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			Vertices[n].y = radius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			Vertices[n].z = radius * cosf(phi*DTOR);
+			Vertices[n].w = 1;
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+			Vertices[n].w = 1;
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			Vertices[n].x = radius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			Vertices[n].y = radius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			Vertices[n].z = radius * cosf(DTOR*phi);
+			Vertices[n].w = 1;
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+				Vertices[n].w = 1;
+
+				n++;
+			}
+		}
+	}
+}
+
+void Generator::ellipseRandC(float radX, float radY, float radZ, int numParticles, int start, Vector3 centre) {
+	srand(time(NULL));
+
+	float phimax = PI;
+	float phimin = -PI;
+	float thetamax = PI;
+	float thetamin = -PI;
+
+	for (int i = start; i < start + numParticles; i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		Vertices[i].x = cos(phi) * cos(theta) *
+			(centre.x - radX + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (radX + radX))));
+		Vertices[i].y = cos(phi) * sin(theta) *
+			(centre.y - radY + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (radY + radY))));
+		Vertices[i].z = 0.3 + sin(phi) *
+			(centre.z - radZ + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (radZ + radZ))));
+		if (i == start + numParticles - 1) Vertices[i].w = 0;
+		else Vertices[i].w = 1;
+	}
+	if (start + numParticles == totalVertices) fullVertices = true;
+}
+
+Vector4* Generator::getVertices() {
+	return Vertices;
+}
+
+Generator::~Generator() {
+}
+*/

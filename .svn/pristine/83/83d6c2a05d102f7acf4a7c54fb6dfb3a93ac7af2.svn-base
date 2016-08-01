@@ -1,0 +1,24 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Builder {
+public:
+	Builder(Vector3 lightSource, Vector3 lightColour, Vector3 observerPos);
+	void drawDome();
+	void drawCloud();
+	void drawLegacy();
+	void drawMetas(Vector3 centre, float radx, float rady, float radz);
+private:
+	void generateDome();
+	void generateCloud();
+	void shadeClouds();
+	void renderClouds();
+	void renderShell();
+	void renderObjects();
+	bool domeGen, cloudGen, metabGen;
+	Vector3 lightSource, lightColour, observerPos;
+};

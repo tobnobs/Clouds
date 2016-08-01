@@ -1,0 +1,17 @@
+#pragma once
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+class Blob
+{
+public:
+	Blob(Vector3 centre, float radx, float rady, float radz, float r, float g, float b, Vector3 lightSource);
+	void draw();
+	~Blob();
+private:
+	float r, g, b, radius, radx, rady, radz;
+	Vector3 lightSource, centre;
+	void genBillboard();
+	Matrix3 calcRotMatrix(Vector3 a, Vector3 b);
+	Matrix3 inverse(Matrix3 m);
+};
+

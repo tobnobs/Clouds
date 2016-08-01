@@ -1,0 +1,19 @@
+/*#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Painter
+{
+public:
+	Painter(Vector4[], int);
+	void drawDome();
+	void drawCloud();
+	~Painter();
+private:
+	Vector4[] Vertices;
+	int numVertices;
+};
+*/

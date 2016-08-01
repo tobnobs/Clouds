@@ -1,0 +1,442 @@
+#include "Builder.h"
+#include "Blob.h"
+#include "BlobS.h"
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+#include <math.h>
+//#include <iostream>
+//#include <algorithm>
+
+using namespace std;
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+
+// DOME PROPERTIES
+// Intervals between verticies.
+int dtheta = 5;
+int dphi = 5;
+float domeRadius = 7.0;
+// The number of verticies which will fit on a sphere with dtheta and dphi
+int numDomePoints = (int)((360 / dtheta)*(90 / dphi) * 4);
+
+// CLOUD PROPERTIES
+// The number of particles in the cloud
+int NumParticles = 0;
+// metaballs
+bool bbgen = false;
+float tStep = (PI) / (float)12;
+float sStep = (PI) / (float)12;
+BlobS* blobs;
+Vector3* centres;
+
+// TOTAL VERTICES
+Vector4* DomePoints = new Vector4[numDomePoints];
+Vector4* CloudPoints = new Vector4[NumParticles];
+
+
+Builder::Builder(Vector3 centres[], int numBlobs, float radius[], Vector3 lightSource, Vector3 lightColour, Vector3 observer, float density) {
+	this->numBlobs = numBlobs;
+	blobs = new BlobS[numBlobs];
+	this->centres = centres;
+	this->lightColour = lightColour;
+	this->lightSource = lightSource;
+	/*this->lightSource.x = domeRadius * sinf(DTOR * lightSource.y) * cosf(DTOR * lightSource.x);
+	this->lightSource.y = domeRadius * sinf(DTOR * lightSource.y) * sinf(DTOR * lightSource.x);
+	this->lightSource.z = domeRadius * cosf(DTOR * lightSource.y);
+	this->lightSrcPolar = lightSource;*/
+	this->viewer = observer;
+	this->density = density;
+	domeGen = false;
+	cloudGen = false;
+	for (int i = 0; i < numBlobs; i++) {
+		blobs[i] = BlobS(centres[i], radius[i], lightSource, viewer);
+	};
+	shadeCloudSimple();
+	renderObjects();
+}
+
+
+void Builder::generateDome() {
+	//int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+
+				// Fill vertices
+	for (int phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (int theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			DomePoints[n].x = domeRadius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			DomePoints[n].y = domeRadius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			DomePoints[n].z = domeRadius * cosf(phi*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			DomePoints[n].x = domeRadius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			DomePoints[n].y = domeRadius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			DomePoints[n].z = domeRadius * cosf((phi + dphi)*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			DomePoints[n].x = domeRadius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			DomePoints[n].y = domeRadius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			DomePoints[n].z = domeRadius * cosf(DTOR*phi);
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				DomePoints[n].x = domeRadius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				DomePoints[n].y = domeRadius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				DomePoints[n].z = domeRadius * cosf((phi + dphi)*DTOR);
+
+				n++;
+			}
+			if (n > numDomePoints) {
+				cout << "Error: too many dome points \n";
+			}
+		}
+	}
+	domeGen = 1;
+}
+void Builder::drawDome() {
+	if (!domeGen) generateDome();
+	domeGen = true;
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	// Outer Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		glColor3f(1.0, 1.0, 1.0);
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z - 1.99);
+	}
+	glEnd();
+
+	float bVal = 0.72;
+
+	// Inner Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		// Colour depending on angle from horizon
+		float rgVal = -DomePoints[i].z / (domeRadius * 5) + 0.5;
+		glColor3f(rgVal, rgVal, bVal);
+		if (DomePoints[i].x > lightSource.x - 0.3 && DomePoints[i].x < lightSource.x + 0.3
+			&& DomePoints[i].x > lightSource.y - 0.3 && DomePoints[i].y < lightSource.x + 0.3
+			&& DomePoints[i].x > lightSource.z - 0.3 && DomePoints[i].z < lightSource.x + 0.3) {
+			glColor3f((lightColour.x + rgVal) / 2, (lightColour.y + rgVal) / 2, (lightColour.z + bVal) / 2);
+		}
+		glVertex3f(DomePoints[i].x, DomePoints[i].y, DomePoints[i].z - 2.0);
+	}
+	glEnd();
+}
+
+void Builder::drawSun() {
+	int i = 0;
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glColor3f(lightColour.x, lightColour.y, lightColour.z / 0.7);
+	glBegin(GL_TRIANGLE_STRIP);
+	for (float t = -PI / 2; t <= (PI / 2) + .0001; t += tStep)
+	{
+		for (float s = -PI; s <= PI + .0001; s += sStep) {
+			glVertex3f(0.1 * cos(t) * cos(s) + lightSource.x,
+				0.1 * cos(t) * sin(s) + lightSource.y,
+				0.1 * sin(t) + lightSource.z);
+			i++;
+			glVertex3f(0.1 * cos(t + tStep) * cos(s) + lightSource.x,
+				0.1 * cos(t + tStep) * sin(s) + lightSource.y,
+				0.1 * sin(t + tStep) + lightSource.z);
+			i++;
+		}
+	}
+	glEnd();
+}
+
+void Builder::generateCloud() {
+	srand(time(NULL));
+
+	float phimax = PI;
+	float phimin = -PI;
+	float thetamax = PI;
+	float thetamin = -PI;
+
+	for (int i = 0; i < (NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (NumParticles / 3); i < (2 * NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.4 + cos(phi) * sin(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.33 + sin(phi) * 0.7 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = (2 * NumParticles / 3); i < NumParticles; i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		CloudPoints[i].x = 0.3 + cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].y = 0.2 + cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		CloudPoints[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	cloudGen = true;
+}
+void Builder::drawCloud() {
+	if (!cloudGen) generateCloud();
+
+	glColor3f(1, 1, 1);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < NumParticles; i++) {
+		glVertex3f(CloudPoints[i].x, CloudPoints[i].y, CloudPoints[i].z);
+	}
+	glEnd();
+}
+
+
+Vector3 Builder::randomCentre(float xRange, float yRange, float zRange) {
+	return Vector3{ -xRange / 2 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (xRange / 2 - -xRange / 2))),
+		-yRange / 2 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (yRange / 2 - -yRange / 2))),
+		static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / zRange)) };
+		
+		//float randRadius = 0.4 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / 0.4));
+		//blobs[i] = Blob(randCentre, randRadius, lightSource, viewer);
+}
+
+// Detailed Billboards
+/*void Builder::lightMetas() {
+	// For every blob
+	for (int i = 0; i < numBlobs; i++) {
+		// Rotate it towards the sun
+		blobs[i].sunflower();
+		// For every point in that blob
+		int numPoints = blobs[i].getNumbbPoints();
+		for (int k = 0; k < numPoints; k++) {
+			// select the point
+			Vector3 iPoint = blobs[i].getPoint(k);
+			// Vector from the sun to the point
+			Vector3 a = lightSource - iPoint;
+			// Initial brightness
+			float brightness = 1;
+			// For every blob closer to the sun
+			for (int j = 0; j < numBlobs; j++) {
+				if (a.length() > (lightSource - blobs[j].getCentre()).length()) {
+					// Vector from the centre of blob j to the point
+					Vector3 b = blobs[j].getCentre() - iPoint;
+					// Distance from the vector to the centre of the blob
+					float d = (a.cross(b)).length() / a.length();
+					float rad = blobs[j].getRadius();
+					// If the distance is smaller than the radius of the blob
+					if (d > rad) {
+						// Subtract from the brightness according to intersection
+						brightness -= gaussian(d, 0.3f, 2 * rad);
+					}
+				}
+			}
+			// Make sure brightness isn't negative
+			if (brightness < 0) brightness = 0;
+			// Multiply the brightness ( < 1 ) by the colour of the original light
+			Vector3 pointColour = brightness * lightColour;
+			// Add some ambient light
+			pointColour = pointColour + Vector3(0.3, 0.3, 0.3);
+			// Make sure its not above 1
+			if (pointColour.x > 1) pointColour.x = 1.0f;
+			if (pointColour.y > 1) pointColour.y = 1.0f;
+			if (pointColour.z > 1) pointColour.z = 1.0f;
+			cout << "pointColour = " << pointColour << endl;
+			// Set the new colour
+			blobs[i].setPointColour(k, pointColour.x, pointColour.y, pointColour.z);
+			// Check its not too dark
+			if (blobs[i].getPointColour(k).x < 0.3 && blobs[i].getPointColour(k).y < 0.3 && blobs[i].getPointColour(k).z < 0.3)
+				cout << "Too dark, point " << i << endl;
+		}
+	}
+}
+void Builder::lightMetasSky() {
+	//For every blob
+	for (int i = 0; i < numBlobs; i++) {
+		// Rotate to face the viewer
+		blobs[i].rotToViewer();
+		// For every point in that blob
+		int kmax = blobs[i].getNumbbPoints();
+		for (int k = 0; k < kmax; k++) {
+			// select the point
+			Vector3 iPoint = blobs[i].getPoint(k);
+			// Vector from observer to the point
+			Vector3 a = viewer - iPoint;
+			// Initial brightness
+			float brightness = 1;
+			// For every blob that isn't i
+			for (int j = 0; j < numBlobs; j++) {
+				// If that blob is further from the viewer
+				if (a.length() < (blobs[j].getCentre() - viewer).length()) {
+					// Vector from the centre of blob j to the point
+					Vector3 b = blobs[j].getCentre() - iPoint;
+					// Distance from the vector to the centre of the blob
+					float d = (a.cross(b)).length() / a.length();
+					float rad = blobs[j].getRadius();
+					// If the distance is smaller than the radius of the blob
+					if (d > rad) {
+						// Subtract from the brightness according to intersection
+						brightness -= gaussian(d, 0.3f, 2 * rad);
+					}
+				}
+			}
+			// Make sure the brightness value isn't negative
+			if (brightness < 0) brightness = 0;
+			// Horizontal vector
+			Vector3 hor = Vector3(a.x, a.y, 0);
+			// Angle between horizontal and d
+			float alt = (hor.dot(a)) / (hor.length() * a.length());
+			if (alt < 0) alt = -alt;
+			// Calculate colour of sky at intersection
+			float bVal = 0.72 * brightness;
+			float rgVal = alt / (domeRadius * 5) + 0.5 * brightness;
+			// Set the new colour
+			blobs[i].setPointColour(k, rgVal * blobs[i].getPointColour(k).x,
+				rgVal * blobs[i].getPointColour(k).y,
+				bVal * blobs[i].getPointColour(k).z);
+		}
+	}
+}*/
+
+void Builder::lightMetaSimple() {
+	// For every blob
+	for (int i = 0; i < numBlobs; i++) {
+		// Rotate it towards the sun
+		blobs[i].sunflower();
+		// select the centre
+		Vector3 iCentre = blobs[i].getCentre();
+		// Vector from the sun to the point
+		Vector3 a = lightSource - iCentre;
+		// Initial brightness
+		float brightness = 1;
+		// For every blob closer to the sun
+		for (int j = 0; j < numBlobs; j++) {
+			if (a.length() > (lightSource - blobs[j].getCentre()).length()) {
+				// Vector from the centre of blob j to the point
+				Vector3 b = blobs[j].getCentre() - iCentre;
+				// Distance from the vector to the centre of the blob
+				float d = (a.cross(b)).length() / a.length();
+				float rad = blobs[j].getRadius();
+				// If the distance is smaller than the radius of the blob
+				if (d > rad) {
+					// Subtract from the brightness according to intersection
+					brightness -= gaussian(d, density, 2 * rad);
+				}
+			}
+		}
+		// Make sure brightness isn't negative
+		if (brightness < 0) brightness = 0;
+		// Multiply the brightness ( < 1 ) by the colour of the original light
+		Vector3 pointColour = brightness * lightColour;
+		// Add some ambient light
+		pointColour = pointColour + Vector3(0.3, 0.3, 0.3);
+		// Make sure its not above 1
+		if (pointColour.x > 1) pointColour.x = 1.0f;
+		if (pointColour.y > 1) pointColour.y = 1.0f;
+		if (pointColour.z > 1) pointColour.z = 1.0f;
+		// Set the new colour
+		blobs[i].setColour(pointColour.x, pointColour.y, pointColour.z);
+		// Check its not too dark
+		if (blobs[i].getColour().x < 0.3 && blobs[i].getColour().y < 0.3 && blobs[i].getColour().z < 0.3)
+			cout << "Too dark, point " << i << endl;
+	}
+}
+void Builder::lightMetasSkySimple() {
+	//For every blob
+	for (int i = 0; i < numBlobs; i++) {
+		// Rotate to face the viewer
+		blobs[i].rotToViewer();
+		// select the centre
+		Vector3 iCentre = blobs[i].getCentre();
+		// Vector from observer to the centre
+		Vector3 a = viewer - iCentre;
+		// Initial brightness
+		float brightness = 1;
+		// For every blob that isn't i
+		for (int j = 0; j < numBlobs; j++) {
+			// If that blob is further from the viewer
+			if (a.length() < (blobs[j].getCentre() - viewer).length()) {
+				// Vector from the centre of blob j to the centre
+				Vector3 b = blobs[j].getCentre() - iCentre;
+				// Distance from the vector to the centre of the blob
+				float d = (a.cross(b)).length() / a.length();
+				float rad = blobs[j].getRadius();
+				// If the distance is smaller than the radius of the blob
+				if (d > rad) {
+					// Subtract from the brightness according to intersection
+						brightness -= gaussian(d, density, 2 * rad);
+				}
+			}
+		}
+		// Make sure the brightness value isn't negative
+		if (brightness < 0) brightness = 0;
+		brightness += 0.3;
+		// Horizontal vector
+		Vector3 hor = Vector3(a.x, a.y, 0);
+		// Angle between horizontal and d
+		float alt = (hor.dot(a)) / (hor.length() * a.length());
+		if (alt < 0) alt = -alt;
+		// Set colour depending on colour of sky at intersection
+		blobs[i].setColour(alt * brightness * blobs[i].getColour().x + 0.2,
+					alt * brightness * blobs[i].getColour().y + 0.2,
+					brightness * blobs[i].getColour().z + 0.2);
+
+		/*float bVal = 0.72 * brightness;
+		float rgVal = alt / (domeRadius * 5) * 0.3 * brightness;
+		// Set the new colour
+		blobs[i].setColour(rgVal + blobs[i].getColour().x,
+			rgVal + blobs[i].getColour().y,
+			brightness * blobs[i].getColour().z);*/
+	}
+}
+
+float Builder::gaussian(float x, float height, float stdev) {
+	const double EulerConstant = std::exp(1.0);
+	return height*pow(EulerConstant, (-(x*x) / (2 * stdev*stdev)));
+}
+
+void Builder::shadeClouds() {
+	lightMetaSimple();
+	lightMetasSkySimple();
+	for (int i = 0; i < numBlobs; i++) {
+		blobs[i].draw();
+	}
+}
+
+void Builder::shadeCloudSimple() {
+	lightMetaSimple();
+	lightMetasSkySimple();
+	for (int i = 0; i < numBlobs; i++) {
+		blobs[i].draw();
+	}
+}
+
+void Builder::renderObjects() {
+	drawSun();
+	drawDome();
+}
+
+/*void Builder::drawMetas(float radius) {
+	for (int i = 0; i < numBlobs; i++) {
+		blobs[i] = Blob(centres[i], radius, lightSource, viewer);
+	};
+	shadeClouds();
+	renderObjects();
+}*/

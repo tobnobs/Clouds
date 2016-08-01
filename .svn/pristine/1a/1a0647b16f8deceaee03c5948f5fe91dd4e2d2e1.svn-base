@@ -1,0 +1,68 @@
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+#include "Header Files\Builder.h"
+#include "Header Files\Creator.h"
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+
+using namespace std;
+
+float parseToInt(string s) {
+	s = s.substr(s.find("=") + 1, s.length());
+	return atof(s.c_str());
+}
+
+ifstream readInput() {
+	ifstream input;
+	input.open("input.txt");
+	if (input.fail()) {
+		cout << "Input read failed" << endl;
+	}
+	return input;
+}
+
+Vector3 readVals() {
+	ifstream input = readInput();
+	string numblobsIn; 
+	string densityIn;
+	string timeIn;
+	input >> numblobsIn >> densityIn >> timeIn;
+	cout << "densityIn = " << parseToInt(densityIn) << endl;
+	return Vector3(parseToInt(numblobsIn), parseToInt(densityIn), parseToInt(timeIn));
+}
+
+Vector3 randomCentre(float xRange, float yRange, float zRange) {
+	return Vector3{ -xRange / 2 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (xRange / 2 - -xRange / 2))),
+		-yRange / 2 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (yRange / 2 - -yRange / 2))),
+		static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / zRange)) };
+}
+
+int main(int argc, char* argv[]) {
+	Vector3 inputs = readVals();
+	cout << inputs.x << " blobs with a density of " << inputs.y << " at " << inputs.z << "." << endl;
+	Vector3* centresMain = new Vector3[inputs.x];
+	float* radius = new float[inputs.x];
+	float radMax = (30/(float)inputs.x);
+	for (int i = 0; i < inputs.x; i++) {
+		centresMain[i] = randomCentre(1.5f, 1.5f, 0.5f);
+		radius[i] = radMax + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / radMax));
+	}
+	readInput();
+
+	glutInit(&argc, argv);
+	Creator creator = Creator(centresMain, inputs.x, radius, inputs.z, inputs.y);
+	creator.work();
+	return 0;
+}

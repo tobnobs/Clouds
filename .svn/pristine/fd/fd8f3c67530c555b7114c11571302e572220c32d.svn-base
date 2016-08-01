@@ -1,0 +1,325 @@
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+#include "Builder.h"
+
+#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+using namespace std;
+
+// WINDOW PROPERTIES
+double dim = 1.0; // dimension of orthogonal box
+char windowName[] = "Clouds";
+int windowWidth = 1200;
+int windowHeight = 600;
+
+// Variables to move the display around
+float xPlus = 0.0;
+float yPlus = 0.0;
+float zPlus = 0.0;
+
+//  Various global state
+int lr = 0;   // azimuth of view angle
+int ud = 0;//; // elevation of view angle
+int fov = 55; // field of view for perspective
+int asp = 2;  // aspect ratio
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+// Macro for sin & cos in degrees
+#define Cos(th) cos(PI/180*(lr))
+#define Sin(th) sin(PI/180*(lr))
+
+	Builder build;
+
+/*
+* project()
+* ------
+* Sets the projection
+*/
+void project()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	// perspective
+	//gluPerspective(fov, asp, 0.1, 4 * dim);
+
+	// orthoganal projection
+	glOrtho(-dim*asp, +dim*asp, -dim, +dim, 0, 4*dim);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+}
+
+/*void generateDome() {
+	for (int i = 0; i < totalVertices; i++) Vertices[i].w = 1;
+
+	int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+
+	// Fill vertices
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			Vertices[n].x = radius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			Vertices[n].y = radius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			Vertices[n].z = radius * cosf(phi*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			Vertices[n].x = radius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			Vertices[n].y = radius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			Vertices[n].z = radius * cosf(DTOR*phi);
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+
+				n++;
+			}
+			if (n > numDomePoints) {
+				std::cout << "Error: too many dome points \n";
+			}
+		}
+	}
+	domeGen = true;
+}*/
+
+/*void generateCloud() {
+	srand(time(NULL));
+
+	float phimax = PI;
+	float phimin = -PI;
+	float thetamax = PI;
+	float thetamin = -PI;
+
+	for (int i = cloudStart; i < cloudStart + (NumParticles/3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		Vertices[i].x = cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].y = cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = cloudStart + (NumParticles / 3); i < cloudStart + (2 * NumParticles / 3); i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		Vertices[i].x = 0.3 + cos(phi) * cos(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].y = 0.4 + cos(phi) * sin(theta) * 1.2 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].z = 0.33 + sin(phi) * 0.7 *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+	for (int i = cloudStart + (2 * NumParticles / 3); i < totalVertices; i++) {
+		float phi = phimin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (phimax - phimin)));
+		float theta = thetamin + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (thetamax - thetamin)));
+		Vertices[i].x = 0.3 + cos(phi) * cos(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].y = 0.2 + cos(phi) * sin(theta) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.5 - 0))));
+		Vertices[i].z = 0.3 + sin(phi) *
+			(0 + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (0.2 - 0))));
+	}
+
+	cloudGen = true;
+}*/
+
+/*void drawDome() {
+	if (!domeGen) generateDome();
+
+	// Outer Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		glColor3f(1.0, 1.0, 1.0);
+		glVertex3f(Vertices[i].x, Vertices[i].y, Vertices[i].z + 0.01);
+	}
+	glEnd();
+
+	// Inner Dome
+	glBegin(GL_TRIANGLE_STRIP);
+	for (int i = 0; i < numDomePoints; i++) {
+		// Colour depending on angle from horizon
+		if (Vertices[i].z < 0.10) glColor3f(0.6, 0.6, 0.8);
+		else if (Vertices[i].z < 0.2) glColor3f(0.5, 0.5, 0.78);
+		else if (Vertices[i].z < 0.4) glColor3f(0.3, 0.3, 0.76);
+		else if (Vertices[i].z < 0.7) glColor3f(0.2, 0.2, 0.74);
+		else glColor3f(0.15, 0.15, 0.72);
+		glVertex3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
+	}
+	glEnd();
+}*/
+
+/*void drawCloud() {
+	if (!cloudGen) generateCloud();
+
+	glColor3f(1, 1, 1);
+	glBegin(GL_POINTS);
+	for (int i = cloudStart; i < totalVertices; i++) {
+		glVertex3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
+	}
+	glEnd();
+}*/
+
+/*
+*  reshape()
+*  ------
+*  GLUT calls this routine when the window is resized
+*/
+void reshape(int width, int height) {
+	asp = (height>0) ? (double)width / height : 1;
+	glViewport(0, 0, width, height);
+	project();
+}
+
+void keyPress(unsigned char key, int x, int y) {
+
+	// Exit on ESC 
+	if (key == 27) exit(0);
+	// Change field of view angle 
+	else if (key == '-' && key>1) fov--;
+	else if (key == '+' && key<179) fov++;
+	// Change dimensions 
+	else if (key == 'P') dim += 0.1;
+	else if (key == 'p' && dim>1) dim -= 0.1;
+	// Change coordinates
+	else if (key == 'q') xPlus += 0.01;
+	else if (key == 'a') xPlus -= 0.01;
+	else if (key == 'w') yPlus += 0.01;
+	else if (key == 's') yPlus -= 0.01;
+	else if (key == 'd') zPlus += 0.01;
+	else if (key == 'e') zPlus -= 0.01;
+
+	project();
+	glutPostRedisplay();
+}
+
+/*
+*  windowSpecial()
+*  ------
+*  GLUT calls this routine when an arrow key is pressed
+*/
+void windowSpecial(int key, int x, int y) {
+	// Right arrow key - increase azimuth by 1 degree
+	if (key == GLUT_KEY_RIGHT) lr += 1;
+	// Left arrow key - decrease azimuth by 1 degree
+	else if (key == GLUT_KEY_LEFT) lr -= 1;
+	// Up arrow key - increase elevation by 1 degree
+	else if (key == GLUT_KEY_UP) ud += 1;
+	// Down arrow key - decrease elevation by 1 degree
+	else if (key == GLUT_KEY_DOWN) ud -= 1;
+	// Home key - return the objects to their initial position
+	else if (key == GLUT_KEY_HOME) {
+		ud = 0;
+		lr = 0; 
+		xPlus = 0.0;
+		yPlus = 0.0;
+		zPlus = 0.0;
+	}
+
+	//  Keep angles to +/-360 degrees
+	lr %= 360;
+	ud %= 360;
+	
+	project();
+	glutPostRedisplay();
+}
+
+/*
+*  windowMenu
+*  ------
+*  Window menu is the same as the keyboard clicks
+*/
+void windowMenu(int value)
+{
+	keyPress((unsigned char)value, 0, 0);
+}
+
+/*
+*  display()
+*  ------
+*  Display the scene
+*/
+void display() {
+	//glClearColor(1.0f, 1.0f, 0.0f, 1.0f);
+	//  Clear the image
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//  Enable Z-buffering in OpenGL
+	glEnable(GL_DEPTH_TEST);
+
+	// Reset previous transforms
+	glLoadIdentity();
+
+	// POSITIONING
+	// Coordinates
+	glTranslatef(xPlus, yPlus, zPlus);
+	// Rotation
+	glRotatef(lr, 0.0, 1.0, 0.0);
+	glRotatef(ud, 1.0, 0.0, 0.0);
+
+	//build.drawLegacy();
+	Vector3 centre = { 0.0f, 0.0f, 0.0f };
+
+
+	Vector3 lightSource = { -1.0f, -1.0f, -1.0f };
+	float radX = 0.5f;
+	float radY = 0.8f;
+	float radZ = 0.2f;
+	float radMax = fmax(fmax(radX, radY), radZ);
+	build.drawMetas(centre, radX, radY, radZ, lightSource);
+	
+	//  Flush and swap
+	glFlush();
+	glutSwapBuffers();
+}
+
+/*
+*  main()
+*  ----
+*  Start up GLUT and tell it what to do
+*/
+int main(int argc, char* argv[]) {
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitWindowSize(windowWidth, windowHeight);
+	glutCreateWindow(windowName);
+	//glutFullScreen();
+
+	glutPostRedisplay();
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+
+	glutKeyboardFunc(keyPress);
+	glutPostRedisplay();
+	glutSpecialFunc(windowSpecial);
+	glutPostRedisplay();
+
+	glutCreateMenu(windowMenu);
+	glutAddMenuEntry("Toggle Mode [m]", 'm');
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
+
+	glutMainLoop();
+	return 0;
+}

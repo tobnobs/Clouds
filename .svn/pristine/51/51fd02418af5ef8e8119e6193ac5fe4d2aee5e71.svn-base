@@ -1,0 +1,19 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Builder {
+public:
+	Builder();
+	void drawDome();
+	void drawCloud();
+private:
+	void generateDome();
+	void generateCloud();
+	bool domeGen, cloudGen;
+	int boundary;
+	//Vector4* Vertices;
+};

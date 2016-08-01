@@ -1,0 +1,35 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Builder {
+public:
+	Builder(Vector3 centres[], int numBlobs, float radius[], Vector3 lightSource, Vector3 lightColour, int observerPos, float density);
+	void drawDome();
+	void drawCloud();
+	/*void lightMetas();
+	void lightMetasSky();*/
+	void lightMetaSimple();
+	void lightMetasSkySimple();
+	Vector3 randomCentre(float xRange, float yRange, float zRange);
+private:
+	//float gaussian(float x, float height, float stdev);
+	void generateDome();
+	void generateCloud();
+	void drawSun();
+	void shadeClouds();
+	void shadeCloudSimple();
+	void renderObjects();
+	Vector3 calcObserver(int i);
+	bool domeGen, cloudGen, metabGen;
+	int numBlobs;
+	Vector3* centres;
+	Vector3 lightSource;
+	Vector2 lightSrcPolar;
+	Vector3 lightColour;
+	Vector3 viewer;
+	Vector4 gauss;
+};

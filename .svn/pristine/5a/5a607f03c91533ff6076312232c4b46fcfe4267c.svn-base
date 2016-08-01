@@ -1,0 +1,17 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Generator
+{
+public:
+	Generator(int);
+	void genDome(int);
+	~Generator();
+private:
+	Vector4* Vertices;
+};
+

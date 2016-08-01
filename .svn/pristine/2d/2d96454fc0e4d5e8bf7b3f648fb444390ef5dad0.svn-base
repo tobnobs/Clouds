@@ -1,0 +1,36 @@
+#include "Radiometry.h"
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+
+Radiometry::Radiometry()
+{
+}
+
+float Radiometry::phaseFunction(float angle, float g) {
+	return ((3 * (1 - g*g)) / (2 * (2 + g*g)))
+		* ((1 + cosf(angle*angle)) / std::powf((1 + g*g - 2 * g*cos(angle)), 3 / 2));
+}
+
+// thickness, density, scattering efficiency, radius
+void Radiometry::calcTransmittance(float thickness, float density, float q, float r) {
+	float area = PI * r * r;
+	float ecs = q * area;
+	float ks = density * ecs;
+}
+
+// luminosity, transmittance, ks
+void Radiometry::lightTrans(float l, float t, float ks) {
+	//g = ks;
+}
+
+Radiometry::~Radiometry()
+{
+}

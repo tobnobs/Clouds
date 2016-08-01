@@ -1,0 +1,96 @@
+#include "Generator.h"
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+#include <iostream>
+#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Poor man's approximation of PI
+#define PI 3.1415926535898
+// Degrees to radians
+#define DTOR (PI / 180.0f)
+// Macro for sin & cos in degrees
+#define Cos(th) cos(PI/180*(lr))
+#define Sin(th) sin(PI/180*(lr))
+
+// DOME PROPERTIES
+// Intervals between verticies.
+int dtheta = 10;
+int dphi = 10;
+float radius = 2.0;
+// The number of verticies which will fit on a sphere with dtheta and dphi
+int numDomePoints = (int)((360 / dtheta)*(90 / dphi) * 4);
+
+// CLOUD PROPERTIES
+// The number of particles in the cloud
+int NumParticles = 2000000;
+
+// TOTAL VERTICES
+int totalVertices;
+int cloudStart = 0;
+Vector4* Vertices;
+
+Generator::Generator(int totalVertices) {
+	Vertices = new Vector4[totalVertices];
+}
+
+void genDome(int end) {
+	if (end > totalVertices) throw std::invalid_argument("Too many vertices");
+
+	cloudStart = end;
+
+	int theta, phi;
+
+	int n = 0;	// Iterator through the list of verticies.
+	float vx, vy, vz, mag;
+	float hTile = 1;
+	float vTile = 1;
+
+	int mlarg = 0;
+
+	// Fill vertices
+	for (phi = 0; phi <= 90 - dphi; phi += (int)dphi) {
+		for (theta = 0; theta <= 360 - dtheta; theta += (int)dtheta) {
+			// Calculate the vector at phi, theta
+			Vertices[n].x = radius * sinf(phi*DTOR) * cosf(DTOR*theta);
+			Vertices[n].y = radius * sinf(phi*DTOR) * sinf(DTOR*theta);
+			Vertices[n].z = radius * cosf(phi*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi+dphi, theta
+			Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(theta*DTOR);
+			Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(theta*DTOR);
+			Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+
+			n++;
+
+			// Calculate the vector at phi, theta+dtheta
+			Vertices[n].x = radius * sinf(DTOR*phi) * cosf(DTOR*(theta + dtheta));
+			Vertices[n].y = radius * sinf(DTOR*phi) * sinf(DTOR*(theta + dtheta));
+			Vertices[n].z = radius * cosf(DTOR*phi);
+
+			n++;
+
+			if (phi > -90 && phi < 90) {
+				// Calculate the vector at phi+dphi, theta+dtheta
+				Vertices[n].x = radius * sinf((phi + dphi)*DTOR) * cosf(DTOR*(theta + dtheta));
+				Vertices[n].y = radius * sinf((phi + dphi)*DTOR) * sinf(DTOR*(theta + dtheta));
+				Vertices[n].z = radius * cosf((phi + dphi)*DTOR);
+
+				n++;
+			}
+			if (n > numDomePoints) {
+				std::cout << "Error: too many dome points \n";
+			}
+		}
+	}
+}
+
+Generator::~Generator()
+{
+}

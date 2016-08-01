@@ -1,0 +1,23 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Builder {
+public:
+	Builder();
+	void drawDome();
+	void drawCloud();
+	void drawLegacy();
+	void drawEllipse(Vector3 centre, float radx, float rady, float radz);
+	void drawMetas(Vector3 centre, float radx, float rady, float radz, Vector3 camPos);
+private:
+	void generateDome();
+	void generateCloud();
+	void generateEllipse(Vector3 centre, float radx, float rady, float radz);
+	bool domeGen, cloudGen, metabGen;
+	int boundary;
+	//Vector4* Vertices;
+};

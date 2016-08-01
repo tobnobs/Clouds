@@ -1,0 +1,14 @@
+#pragma once
+
+#include "Dependencies\glew\glew.h"
+#include "Dependencies\freeglut\freeglut.h"
+#include "Dependencies\matrix\src\Matrices.h"
+#include "Dependencies\matrix\src\Vectors.h"
+
+class Creator {
+public:
+	Creator(Vector3 centresMain[], int numMetas, float radii[], float timeIn, float density);
+	void work();
+	~Creator();
+};
+
